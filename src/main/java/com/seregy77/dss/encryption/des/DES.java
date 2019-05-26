@@ -1,26 +1,30 @@
 package com.seregy77.dss.encryption.des;
 
 import com.seregy77.dss.encryption.SymmetricAlgorithm;
-import com.seregy77.dss.encryption.md5.MD5;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.Collections;
 
 public class DES implements SymmetricAlgorithm {
-    private static final int BLOCK_SIZE = 64/Byte.SIZE;
+    private static final int BLOCK_SIZE = 64 / Byte.SIZE;
     private static final int HALF_BLOCK_SIZE = BLOCK_SIZE / 2;
-    private static final int KEY_SIZE = 56/Byte.SIZE;
+    private static final int KEY_SIZE = 56 / Byte.SIZE;
 
     @Override
-    public String encrypt(String message, String key) {
-        String hash = new MD5().encrypt(key);
-        hash = hash.substring(0, 16);
-        long longKey = new BigInteger(hash, 16).longValue();
+    public byte[] encrypt(byte[] message, byte[] key) {
+        long longKey = new BigInteger(key).longValue();
         String[] keys = generateKeys(longKey);
 
-        int sizeInBits = message.getBytes().length * 8;
-        StringBuilder bitMessage = new StringBuilder(new BigInteger(message.getBytes()).toString(2));
+        int sizeInBits = message.length * 8;
+        BigInteger bigInteger = new BigInteger(message);
+        String originalBitString = bigInteger.toString(2);
+        originalBitString = originalBitString.replace("-", "1");
+        StringBuilder bitMessage = new StringBuilder(originalBitString);
+
         while (bitMessage.length() < sizeInBits) {
             bitMessage.insert(0, "0");
         }
@@ -61,54 +65,85 @@ public class DES implements SymmetricAlgorithm {
             encryptedMessage.append(encryptedBlock);
         }
 
-        return encryptedMessage.toString();
+        try {
+            return Hex.decodeHex(encryptedMessage.toString());
+        } catch (DecoderException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
-    public String decrypt(String message, String key) {
-        String hash = new MD5().encrypt(key);
-        hash = hash.substring(0, 16);
-        long longKey = new BigInteger(hash, 16).longValue();
+    public byte[] decrypt(byte[] message, byte[] key) {
+        long longKey = new BigInteger(key).longValue();
         String[] keys = generateKeys(longKey);
         ArrayUtils.reverse(keys);
 
-        BigInteger messageInteger = new BigInteger(message, 16);
-        int sizeInBits = messageInteger.toByteArray().length * 8;
-        StringBuilder bitMessage = new StringBuilder(messageInteger.toString(2));
-        while (bitMessage.length() < sizeInBits) {
-            bitMessage.insert(0, "0");
-        }
-
-        String[] plaintextBlocks = new String[bitMessage.length() / 64];
+        String[] plaintextBlocks = new String[message.length / 8];
         for (int i = 0; i < plaintextBlocks.length; i++) {
-            int currentIndex = i * 64;
-            plaintextBlocks[i] = bitMessage.substring(currentIndex, currentIndex + 64);
+
+
+            int currentIndex = i * 8;
+            byte[] block = Arrays.copyOfRange(message, currentIndex, currentIndex + 8);
+
+
+            StringBuilder bitString = new StringBuilder(Long.toBinaryString(new BigInteger(block).longValue()));
+            while (bitString.length() < 64) {
+                bitString.insert(0, "0");
+            }
+            plaintextBlocks[i] = bitString.toString();
         }
 
-        String[] decryptedBlocks = new String[plaintextBlocks.length];
+        byte[][] decryptedBlocks = new byte[plaintextBlocks.length][8];
         for (int i = 0; i < decryptedBlocks.length; i++) {
             StringBuilder bitString = new StringBuilder(encodeBlock(plaintextBlocks[i], keys));
             while (bitString.length() < 64) {
                 bitString.insert(0, "0");
             }
-            decryptedBlocks[i] = new String(new BigInteger(bitString.toString(), 2).toByteArray());
+            decryptedBlocks[i] = new BigInteger(bitString.toString(), 2).toByteArray();
         }
 
-        StringBuilder paddedBlock = new StringBuilder(new BigInteger(decryptedBlocks[decryptedBlocks.length - 1].getBytes()).toString(2));
+        StringBuilder paddedBlock = new StringBuilder(new BigInteger(decryptedBlocks[decryptedBlocks.length - 1]).toString(2));
         while (paddedBlock.length() < 64) {
             paddedBlock.insert(0, "0");
         }
 
         int paddedCharacters = Integer.parseInt(paddedBlock.substring(paddedBlock.length() - 8, paddedBlock.length()), 2);
+        if (paddedCharacters > 64) {
+            paddedCharacters = 0;
+        }
         paddedBlock = new StringBuilder(paddedBlock.substring(0, paddedBlock.length() - paddedCharacters * 8));
-        decryptedBlocks[decryptedBlocks.length - 1] = new String(new BigInteger(paddedBlock.toString(), 2).toByteArray());
+        decryptedBlocks[decryptedBlocks.length - 1] = Arrays.copyOf(binaryStringToBytes(paddedBlock.toString()), 8);
 
-        StringBuilder decryptedMessage = new StringBuilder();
-        for (String encryptedBlock : decryptedBlocks) {
-            decryptedMessage.append(encryptedBlock);
+        byte[] decryptedMessage = new byte[8 * decryptedBlocks.length];
+        for (int i = 0; i < decryptedBlocks.length; i++) {
+            int currentIndex = i * 8;
+            System.arraycopy(decryptedBlocks[i], 0, decryptedMessage, currentIndex, 8);
         }
 
-        return decryptedMessage.toString();
+        return decryptedMessage;
+    }
+
+    private static byte[] binaryStringToBytes(String binaryString) {
+        int splitSize = 8;
+
+        if (binaryString.length() % splitSize != 0) {
+            throw new IllegalArgumentException("Input length. '" + binaryString + "' must be divisible by 8");
+        }
+
+        int index = 0;
+        int position = 0;
+
+        byte[] resultByteArray = new byte[binaryString.length() / splitSize];
+        StringBuilder text = new StringBuilder(binaryString);
+
+        while (index < text.length()) {
+            String binaryStringChunk = text.substring(index, Math.min(index + splitSize, text.length()));
+            int byteAsInt = Integer.parseInt(binaryStringChunk, 2);
+            resultByteArray[position] = (byte) byteAsInt;
+            index += splitSize;
+            position++;
+        }
+        return resultByteArray;
     }
 
     private String[] generateKeys(long key) {
@@ -128,8 +163,8 @@ public class DES implements SymmetricAlgorithm {
 
         StringBuilder permutated = new StringBuilder();
 
-        for (int i = 0; i < permutationTable.length; i++) {
-            permutated.append(binaryString.charAt(permutationTable[i] - 1));
+        for (int value : permutationTable) {
+            permutated.append(binaryString.charAt(value - 1));
         }
 
         Key[] keys = new Key[17];
@@ -139,16 +174,16 @@ public class DES implements SymmetricAlgorithm {
         int[] keyRotationTable = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1};
 
 
-        int[] permutationTable2 ={
-            14, 17, 11, 24, 1, 5,
-                    3, 28, 15, 6, 21, 10,
-                    23, 19, 12, 4, 26, 8,
-                    16, 7, 27, 20, 13, 2,
-                    41, 52, 31, 37, 47, 55,
-                    30, 40, 51, 45, 33, 48,
-                    44, 49, 39, 56, 34, 53,
-                    46, 42, 50, 36, 29, 32
-        } ;
+        int[] permutationTable2 = {
+                14, 17, 11, 24, 1, 5,
+                3, 28, 15, 6, 21, 10,
+                23, 19, 12, 4, 26, 8,
+                16, 7, 27, 20, 13, 2,
+                41, 52, 31, 37, 47, 55,
+                30, 40, 51, 45, 33, 48,
+                44, 49, 39, 56, 34, 53,
+                46, 42, 50, 36, 29, 32
+        };
 
         for (int i = 1; i < keys.length; i++) {
             Key previous = keys[i - 1];
@@ -170,8 +205,8 @@ public class DES implements SymmetricAlgorithm {
 
             StringBuilder permutatedKey = new StringBuilder();
 
-            for (int j = 0; j < permutationTable2.length; j++) {
-                permutatedKey.append(cd.charAt(permutationTable2[j] - 1));
+            for (int value : permutationTable2) {
+                permutatedKey.append(cd.charAt(value - 1));
             }
 
             keys[i] = new Key(cString.toString(), dString.toString(), permutatedKey.toString());
@@ -198,7 +233,7 @@ public class DES implements SymmetricAlgorithm {
         return stringToShift.substring(1) + stringToShift.charAt(0);
     }
 
-    public String encodeBlock(String bitString, String[] keys) {
+    private String encodeBlock(String bitString, String[] keys) {
         int[] initialPermutation = {
                 58, 50, 42, 34, 26, 18, 10, 2,
                 60, 52, 44, 36, 28, 20, 12, 4,
@@ -211,8 +246,8 @@ public class DES implements SymmetricAlgorithm {
         };
 
         StringBuilder permutatedBlock = new StringBuilder();
-        for (int j = 0; j < initialPermutation.length; j++) {
-            permutatedBlock.append(bitString.charAt(initialPermutation[j] - 1));
+        for (int value : initialPermutation) {
+            permutatedBlock.append(bitString.charAt(value - 1));
         }
 
         long[] l = new long[17];
@@ -236,21 +271,21 @@ public class DES implements SymmetricAlgorithm {
         }
 
         int[] finalPermutation = {
-                40,    8,  48,   16,   56,  24,   64,  32,
-                39,    7,  47,   15,   55,  23,   63,  31,
-                38,    6,  46,   14,   54,  22,   62,  30,
-                37,    5,  45,   13,   53,  21,   61,  29,
-                36,    4,  44,   12,   52,  20,   60,  28,
-                35,    3,  43,   11,   51,  19,   59,  27,
-                34,    2,  42,   10,   50,  18,   58,  26,
-                33,    1,  41,    9,   49,  17,   57,  25
+                40, 8, 48, 16, 56, 24, 64, 32,
+                39, 7, 47, 15, 55, 23, 63, 31,
+                38, 6, 46, 14, 54, 22, 62, 30,
+                37, 5, 45, 13, 53, 21, 61, 29,
+                36, 4, 44, 12, 52, 20, 60, 28,
+                35, 3, 43, 11, 51, 19, 59, 27,
+                34, 2, 42, 10, 50, 18, 58, 26,
+                33, 1, 41, 9, 49, 17, 57, 25
         };
 
         String combined = bitR.append(bitL).toString();
 
         StringBuilder finalPermutated = new StringBuilder();
-        for (int i = 0; i < finalPermutation.length; i++) {
-            finalPermutated.append(combined.charAt(finalPermutation[i] - 1));
+        for (int value : finalPermutation) {
+            finalPermutated.append(combined.charAt(value - 1));
         }
 
         return finalPermutated.toString();
@@ -386,11 +421,10 @@ public class DES implements SymmetricAlgorithm {
                 28, 29, 30, 31, 32, 1};
 
         StringBuilder expandedBlock = new StringBuilder();
-        for (int j = 0; j < expansion.length; j++) {
-            expandedBlock.append(bitString.charAt(expansion[j] - 1));
+        for (int i : expansion) {
+            expandedBlock.append(bitString.charAt(i - 1));
         }
 
         return Long.parseLong(expandedBlock.toString(), 2);
     }
-
 }

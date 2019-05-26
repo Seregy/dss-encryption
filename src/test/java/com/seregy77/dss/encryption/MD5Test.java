@@ -3,7 +3,7 @@ package com.seregy77.dss.encryption;
 import com.seregy77.dss.encryption.md5.MD5;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class MD5Test {
     @Test
