@@ -1,12 +1,13 @@
-package com.seregy77.dss.encryption.md5;
+package com.seregy77.dss.service.encryption.md5;
 
-import com.seregy77.dss.encryption.HashAlgorithm;
+import org.springframework.stereotype.Service;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
-public class MD5 implements HashAlgorithm {
+@Service
+public class Md5Impl implements Md5 {
     private static final int OPERATION_AMOUNT = 16;
     private static final int ROUND_AMOUNT = 4;
 
@@ -30,7 +31,12 @@ public class MD5 implements HashAlgorithm {
 
     @Override
     public String encrypt(String message, String salt) {
-        return encrypt(message + salt);
+        String saltedMessage = message;
+        if (salt != null) {
+            saltedMessage += salt;
+        }
+
+        return encrypt(saltedMessage);
     }
 
     @Override

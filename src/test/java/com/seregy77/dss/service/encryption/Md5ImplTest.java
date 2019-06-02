@@ -1,23 +1,23 @@
-package com.seregy77.dss.encryption;
+package com.seregy77.dss.service.encryption;
 
-import com.seregy77.dss.encryption.md5.MD5;
+import com.seregy77.dss.service.encryption.md5.Md5Impl;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class MD5Test {
+class Md5ImplTest {
     @Test
     void encrypt_rfcTestSuit() {
         // Given
-        MD5 md5 = new MD5();
+        Md5Impl md5Impl = new Md5Impl();
 
         // When
-        String emptyStringHash = md5.encrypt("");
-        String aHash = md5.encrypt("a");
-        String abcHash = md5.encrypt("abc");
-        String messageDigestHash = md5.encrypt("message digest");
-        String allCharsHash = md5.encrypt("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
-        String numbersHash = md5.encrypt("12345678901234567890123456789012345678901234567890123456789012345678901234567890");
+        String emptyStringHash = md5Impl.encrypt("");
+        String aHash = md5Impl.encrypt("a");
+        String abcHash = md5Impl.encrypt("abc");
+        String messageDigestHash = md5Impl.encrypt("message digest");
+        String allCharsHash = md5Impl.encrypt("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
+        String numbersHash = md5Impl.encrypt("12345678901234567890123456789012345678901234567890123456789012345678901234567890");
 
         // Then
         assertEquals("d41d8cd98f00b204e9800998ecf8427e", emptyStringHash);
@@ -32,12 +32,12 @@ class MD5Test {
     @Test
     void encrypt_withSalt_shouldConcatenate() {
         // Given
-        MD5 md5 = new MD5();
+        Md5Impl md5Impl = new Md5Impl();
         String message = "abc";
         String salt = "some random salt";
 
         // When
-        String actualHash = md5.encrypt(message, salt);
+        String actualHash = md5Impl.encrypt(message, salt);
 
         // Then
         assertEquals("06ce46adfdc8c82c83eed82b58c304c5", actualHash);

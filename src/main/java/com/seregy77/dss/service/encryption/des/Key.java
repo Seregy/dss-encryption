@@ -1,4 +1,4 @@
-package com.seregy77.dss.encryption.des;
+package com.seregy77.dss.service.encryption.des;
 
 import lombok.Value;
 

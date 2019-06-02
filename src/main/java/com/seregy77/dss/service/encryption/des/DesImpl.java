@@ -1,15 +1,16 @@
-package com.seregy77.dss.encryption.des;
+package com.seregy77.dss.service.encryption.des;
 
-import com.seregy77.dss.encryption.SymmetricAlgorithm;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.ArrayUtils;
+import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 
-public class DES implements SymmetricAlgorithm {
+@Service
+public class DesImpl implements Des {
     private static final int BLOCK_SIZE = 64 / Byte.SIZE;
     private static final int HALF_BLOCK_SIZE = BLOCK_SIZE / 2;
     private static final int KEY_SIZE = 56 / Byte.SIZE;
@@ -20,8 +21,7 @@ public class DES implements SymmetricAlgorithm {
         String[] keys = generateKeys(longKey);
 
         int sizeInBits = message.length * 8;
-        BigInteger bigInteger = new BigInteger(message);
-        String originalBitString = bigInteger.toString(2);
+        String originalBitString = bytesToBitString(message);
         originalBitString = originalBitString.replace("-", "1");
         StringBuilder bitMessage = new StringBuilder(originalBitString);
 
@@ -54,7 +54,8 @@ public class DES implements SymmetricAlgorithm {
             while (bitString.length() < 64) {
                 bitString.insert(0, "0");
             }
-            encryptedBlocks[i] = new BigInteger(bitString.toString(), 2).toString(16);
+
+            encryptedBlocks[i] = String.valueOf(Hex.encodeHex(binaryStringToBytes((bitString.toString()))));
         }
 
         StringBuilder encryptedMessage = new StringBuilder();
@@ -99,28 +100,30 @@ public class DES implements SymmetricAlgorithm {
             while (bitString.length() < 64) {
                 bitString.insert(0, "0");
             }
-            decryptedBlocks[i] = new BigInteger(bitString.toString(), 2).toByteArray();
+            decryptedBlocks[i] = Arrays.copyOf(binaryStringToBytes(bitString.toString()), 8);
         }
 
-        StringBuilder paddedBlock = new StringBuilder(new BigInteger(decryptedBlocks[decryptedBlocks.length - 1]).toString(2));
+
+        StringBuilder paddedBlock = new StringBuilder(bytesToBitString(decryptedBlocks[decryptedBlocks.length - 1]));
         while (paddedBlock.length() < 64) {
             paddedBlock.insert(0, "0");
         }
 
         int paddedCharacters = Integer.parseInt(paddedBlock.substring(paddedBlock.length() - 8, paddedBlock.length()), 2);
-        if (paddedCharacters > 64) {
+        int previousPaddedCharacters = Integer.parseInt(paddedBlock.substring(paddedBlock.length() - 16, paddedBlock.length() - 8), 2);
+        if (paddedCharacters > 64 || paddedCharacters != previousPaddedCharacters) {
             paddedCharacters = 0;
         }
         paddedBlock = new StringBuilder(paddedBlock.substring(0, paddedBlock.length() - paddedCharacters * 8));
-        decryptedBlocks[decryptedBlocks.length - 1] = Arrays.copyOf(binaryStringToBytes(paddedBlock.toString()), 8);
+        byte[] paddedBytes = binaryStringToBytes(paddedBlock.toString());
+        decryptedBlocks[decryptedBlocks.length - 1] = Arrays.copyOf(paddedBytes, paddedBytes.length);
 
-        byte[] decryptedMessage = new byte[8 * decryptedBlocks.length];
-        for (int i = 0; i < decryptedBlocks.length; i++) {
-            int currentIndex = i * 8;
-            System.arraycopy(decryptedBlocks[i], 0, decryptedMessage, currentIndex, 8);
+        byte[] currentArray = new byte[0];
+        for (byte[] decryptedBlock : decryptedBlocks) {
+            currentArray = ArrayUtils.addAll(currentArray, decryptedBlock);
         }
 
-        return decryptedMessage;
+        return currentArray;
     }
 
     private static byte[] binaryStringToBytes(String binaryString) {
@@ -426,5 +429,18 @@ public class DES implements SymmetricAlgorithm {
         }
 
         return Long.parseLong(expandedBlock.toString(), 2);
+    }
+
+    private String bytesToBitString(byte[] bytes) {
+        StringBuilder bitString = new StringBuilder();
+        for (byte value : bytes) {
+            bitString.append(byteToBitString(value));
+        }
+
+        return bitString.toString();
+    }
+
+    private String byteToBitString(byte byteValue) {
+        return Integer.toBinaryString((byteValue & 0xFF) + 0x100).substring(1);
     }
 }

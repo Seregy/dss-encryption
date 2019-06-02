@@ -1,13 +1,14 @@
-package com.seregy77.dss.encryption.des;
+package com.seregy77.dss.service.encryption.des;
 
-import com.seregy77.dss.encryption.SymmetricAlgorithm;
 import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 
+@Service
 @AllArgsConstructor
-public class TripleDes implements SymmetricAlgorithm {
-    private final DES des;
+public class TripleDesImpl implements TripleDes {
+    private final Des des;
 
     @Override
     public byte[] encrypt(byte[] message, byte[] key) {
@@ -30,11 +31,14 @@ public class TripleDes implements SymmetricAlgorithm {
     }
 
     private byte[][] generateKeys(byte[] key) {
-        byte[][] keys = new byte[3][8];
-        for (int i = 0; i < keys.length; i++) {
-            int currentIndex = i * 8;
-            keys[i] = Arrays.copyOfRange(key, currentIndex, currentIndex + 8);
+        if (key.length < 2 * 8) {
+            throw new IllegalArgumentException("Key must be 192 bits long");
         }
+
+        byte[][] keys = new byte[3][8];
+        keys[0] = Arrays.copyOfRange(key, 0, 8);
+        keys[1] = Arrays.copyOfRange(key, 8, 16);
+        keys[2] = Arrays.copyOfRange(key, 0, 8);
 
         return keys;
     }

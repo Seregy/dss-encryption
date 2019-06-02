@@ -1,4 +1,4 @@
-package com.seregy77.dss.encryption.des;
+package com.seregy77.dss.service.encryption.des;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class TripleDesTest {
+class TripleDesImplTest {
 
     @Test
     void encrypt_withoutPadding() throws DecoderException {
@@ -18,7 +18,7 @@ class TripleDesTest {
         System.arraycopy(Hex.decodeHex("04d17f2861196cdb"), 0, key, 8, 8);
         System.arraycopy(Hex.decodeHex("42a888a8fd10b4d7"), 0, key, 16, 8);
 
-        byte[] customEncrypted = new TripleDes(new DES()).encrypt(message.getBytes(), key);
+        byte[] customEncrypted = new TripleDesImpl(new DesImpl()).encrypt(message.getBytes(), key);
         assertEquals("e9cedc88e61bf5cd", new String(Hex.encodeHex(customEncrypted)));
     }
 
@@ -32,7 +32,7 @@ class TripleDesTest {
         System.arraycopy(Hex.decodeHex("04d17f2861196cdb"), 0, key, 8, 8);
         System.arraycopy(Hex.decodeHex("42a888a8fd10b4d7"), 0, key, 16, 8);
 
-        byte[] customEncrypted = new TripleDes(new DES()).encrypt(message.getBytes(), key);
+        byte[] customEncrypted = new TripleDesImpl(new DesImpl()).encrypt(message.getBytes(), key);
         assertEquals("e9cedc88e61bf5cd7aa3d40ffeb74415", new String(Hex.encodeHex(customEncrypted)));
     }
 
@@ -47,7 +47,7 @@ class TripleDesTest {
         System.arraycopy(Hex.decodeHex("04d17f2861196cdb"), 0, key, 8, 8);
         System.arraycopy(Hex.decodeHex("42a888a8fd10b4d7"), 0, key, 16, 8);
 
-        byte[] customEncrypted = new TripleDes(new DES()).decrypt(Hex.decodeHex(encryptedMessage), key);
+        byte[] customEncrypted = new TripleDesImpl(new DesImpl()).decrypt(Hex.decodeHex(encryptedMessage), key);
         assertEquals("some mes", new String(customEncrypted).trim());
     }
 
@@ -62,7 +62,7 @@ class TripleDesTest {
         System.arraycopy(Hex.decodeHex("04d17f2861196cdb"), 0, key, 8, 8);
         System.arraycopy(Hex.decodeHex("42a888a8fd10b4d7"), 0, key, 16, 8);
 
-        byte[] customEncrypted = new TripleDes(new DES()).decrypt(Hex.decodeHex(encryptedMessage), key);
+        byte[] customEncrypted = new TripleDesImpl(new DesImpl()).decrypt(Hex.decodeHex(encryptedMessage), key);
         assertEquals("some message", new String(customEncrypted).trim());
     }
 }
