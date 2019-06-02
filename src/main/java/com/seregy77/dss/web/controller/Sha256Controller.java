@@ -1,6 +1,6 @@
 package com.seregy77.dss.web.controller;
 
-import com.seregy77.dss.service.encryption.md5.Md5;
+import com.seregy77.dss.service.encryption.sha256.Sha256;
 import com.seregy77.dss.web.domain.HashingRequest;
 import com.seregy77.dss.web.domain.HashingResponse;
 import lombok.RequiredArgsConstructor;
@@ -10,13 +10,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("md5")
+@RequestMapping("sha256")
 @RequiredArgsConstructor
-public class Md5Controller {
-    private final Md5 md5;
+public class Sha256Controller {
+    private final Sha256 sha256;
 
     @PostMapping("/hash")
     public HashingResponse hashWithMd5(@RequestBody HashingRequest hashingRequest) {
-        return new HashingResponse(md5.encrypt(hashingRequest.getMessage(), hashingRequest.getSalt()));
+        return new HashingResponse(sha256.encrypt(hashingRequest.getMessage(), hashingRequest.getSalt()));
     }
 }

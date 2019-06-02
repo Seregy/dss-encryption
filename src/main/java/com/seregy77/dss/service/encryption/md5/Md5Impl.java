@@ -1,5 +1,6 @@
 package com.seregy77.dss.service.encryption.md5;
 
+import com.seregy77.dss.service.encryption.AbstractHashAlgorithm;
 import org.springframework.stereotype.Service;
 
 import java.nio.ByteBuffer;
@@ -7,7 +8,7 @@ import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
 @Service
-public class Md5Impl implements Md5 {
+public class Md5Impl extends AbstractHashAlgorithm implements Md5 {
     private static final int OPERATION_AMOUNT = 16;
     private static final int ROUND_AMOUNT = 4;
 
@@ -28,16 +29,6 @@ public class Md5Impl implements Md5 {
     private static final int INITIAL_D = 0x10325476;
 
     private final int[] T = initT();
-
-    @Override
-    public String encrypt(String message, String salt) {
-        String saltedMessage = message;
-        if (salt != null) {
-            saltedMessage += salt;
-        }
-
-        return encrypt(saltedMessage);
-    }
 
     @Override
     public String encrypt(String message) {
