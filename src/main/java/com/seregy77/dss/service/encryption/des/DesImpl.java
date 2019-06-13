@@ -11,58 +11,45 @@ import java.util.Collections;
 
 @Service
 public class DesImpl implements Des {
-    private static final int BLOCK_SIZE = 64 / Byte.SIZE;
-    private static final int HALF_BLOCK_SIZE = BLOCK_SIZE / 2;
-    private static final int KEY_SIZE = 56 / Byte.SIZE;
+    private static final int BLOCK_SIZE_BITS = 64;
+    private static final int HALF_BLOCK_SIZE_BITS = BLOCK_SIZE_BITS / 2;
+
 
     @Override
     public byte[] encrypt(byte[] message, byte[] key) {
         long longKey = new BigInteger(key).longValue();
         String[] keys = generateKeys(longKey);
 
-        int sizeInBits = message.length * 8;
+        int sizeInBits = message.length * Byte.SIZE;
         String originalBitString = bytesToBitString(message);
-        originalBitString = originalBitString.replace("-", "1");
-        StringBuilder bitMessage = new StringBuilder(originalBitString);
 
-        while (bitMessage.length() < sizeInBits) {
-            bitMessage.insert(0, "0");
-        }
-
+        String bitMessage = appendZeroes(sizeInBits, originalBitString);
 
         StringBuilder paddedMessage = new StringBuilder().append(bitMessage);
         int messageLength = paddedMessage.length();
-        int reminder = messageLength % 64;
+        int reminder = messageLength % BLOCK_SIZE_BITS;
         if (reminder != 0) {
-            int bytesToAdd = (64 - reminder) / 8;
-            StringBuilder bitsToAdd = new StringBuilder(Integer.toBinaryString(bytesToAdd));
-            while (bitsToAdd.length() < 8) {
-                bitsToAdd.insert(0, "0");
-            }
-            paddedMessage.append(String.join("", Collections.nCopies(bytesToAdd, bitsToAdd.toString())));
+            int bytesToAdd = (BLOCK_SIZE_BITS - reminder) / Byte.SIZE;
+            String bitsToAdd = appendZeroes(Byte.SIZE, Integer.toBinaryString(bytesToAdd));
+            paddedMessage.append(String.join("", Collections.nCopies(bytesToAdd, bitsToAdd)));
         }
 
-        String[] plaintextBlocks = new String[paddedMessage.length() / 64];
+        String[] plaintextBlocks = new String[paddedMessage.length() / BLOCK_SIZE_BITS];
         for (int i = 0; i < plaintextBlocks.length; i++) {
-            int currentIndex = i * 64;
-            plaintextBlocks[i] = paddedMessage.substring(currentIndex, currentIndex + 64);
+            int currentIndex = i * BLOCK_SIZE_BITS;
+            plaintextBlocks[i] = paddedMessage.substring(currentIndex, currentIndex + BLOCK_SIZE_BITS);
         }
 
         String[] encryptedBlocks = new String[plaintextBlocks.length];
         for (int i = 0; i < encryptedBlocks.length; i++) {
-            StringBuilder bitString = new StringBuilder(encodeBlock(plaintextBlocks[i], keys));
-            while (bitString.length() < 64) {
-                bitString.insert(0, "0");
-            }
+            String bitString = appendZeroes(BLOCK_SIZE_BITS, encodeBlock(plaintextBlocks[i], keys));
 
-            encryptedBlocks[i] = String.valueOf(Hex.encodeHex(binaryStringToBytes((bitString.toString()))));
+            encryptedBlocks[i] = String.valueOf(Hex.encodeHex(binaryStringToBytes((bitString))));
         }
 
         StringBuilder encryptedMessage = new StringBuilder();
         for (String encryptedBlock : encryptedBlocks) {
-            while (bitMessage.length() < sizeInBits) {
-                bitMessage.insert(0, "0");
-            }
+            bitMessage = appendZeroes(sizeInBits, bitMessage);
             encryptedMessage.append(encryptedBlock);
         }
 
@@ -79,43 +66,33 @@ public class DesImpl implements Des {
         String[] keys = generateKeys(longKey);
         ArrayUtils.reverse(keys);
 
-        String[] plaintextBlocks = new String[message.length / 8];
+        String[] plaintextBlocks = new String[message.length / Byte.SIZE];
         for (int i = 0; i < plaintextBlocks.length; i++) {
 
 
-            int currentIndex = i * 8;
-            byte[] block = Arrays.copyOfRange(message, currentIndex, currentIndex + 8);
+            int currentIndex = i * Byte.SIZE;
+            byte[] block = Arrays.copyOfRange(message, currentIndex, currentIndex + Byte.SIZE);
 
-
-            StringBuilder bitString = new StringBuilder(Long.toBinaryString(new BigInteger(block).longValue()));
-            while (bitString.length() < 64) {
-                bitString.insert(0, "0");
-            }
-            plaintextBlocks[i] = bitString.toString();
+            String bitString = appendZeroes(BLOCK_SIZE_BITS, Long.toBinaryString(new BigInteger(block).longValue()));
+            plaintextBlocks[i] = bitString;
         }
 
-        byte[][] decryptedBlocks = new byte[plaintextBlocks.length][8];
+        byte[][] decryptedBlocks = new byte[plaintextBlocks.length][Byte.SIZE];
         for (int i = 0; i < decryptedBlocks.length; i++) {
-            StringBuilder bitString = new StringBuilder(encodeBlock(plaintextBlocks[i], keys));
-            while (bitString.length() < 64) {
-                bitString.insert(0, "0");
-            }
-            decryptedBlocks[i] = Arrays.copyOf(binaryStringToBytes(bitString.toString()), 8);
+            String bitString = appendZeroes(BLOCK_SIZE_BITS, encodeBlock(plaintextBlocks[i], keys));
+            decryptedBlocks[i] = Arrays.copyOf(binaryStringToBytes(bitString), Byte.SIZE);
         }
 
 
-        StringBuilder paddedBlock = new StringBuilder(bytesToBitString(decryptedBlocks[decryptedBlocks.length - 1]));
-        while (paddedBlock.length() < 64) {
-            paddedBlock.insert(0, "0");
-        }
+        String paddedBlock = appendZeroes(BLOCK_SIZE_BITS, bytesToBitString(decryptedBlocks[decryptedBlocks.length - 1]));
 
-        int paddedCharacters = Integer.parseInt(paddedBlock.substring(paddedBlock.length() - 8, paddedBlock.length()), 2);
-        int previousPaddedCharacters = Integer.parseInt(paddedBlock.substring(paddedBlock.length() - 16, paddedBlock.length() - 8), 2);
-        if (paddedCharacters > 64 || paddedCharacters != previousPaddedCharacters) {
+        int paddedCharacters = Integer.parseInt(paddedBlock.substring(paddedBlock.length() - Byte.SIZE), 2);
+        int previousPaddedCharacters = Integer.parseInt(paddedBlock.substring(paddedBlock.length() - 16, paddedBlock.length() - Byte.SIZE), 2);
+        if (paddedCharacters > BLOCK_SIZE_BITS || paddedCharacters != previousPaddedCharacters) {
             paddedCharacters = 0;
         }
-        paddedBlock = new StringBuilder(paddedBlock.substring(0, paddedBlock.length() - paddedCharacters * 8));
-        byte[] paddedBytes = binaryStringToBytes(paddedBlock.toString());
+        paddedBlock = paddedBlock.substring(0, paddedBlock.length() - paddedCharacters * Byte.SIZE);
+        byte[] paddedBytes = binaryStringToBytes(paddedBlock);
         decryptedBlocks[decryptedBlocks.length - 1] = Arrays.copyOf(paddedBytes, paddedBytes.length);
 
         byte[] currentArray = new byte[0];
@@ -127,7 +104,7 @@ public class DesImpl implements Des {
     }
 
     private static byte[] binaryStringToBytes(String binaryString) {
-        int splitSize = 8;
+        int splitSize = Byte.SIZE;
 
         if (binaryString.length() % splitSize != 0) {
             throw new IllegalArgumentException("Input length. '" + binaryString + "' must be divisible by 8");
@@ -150,10 +127,7 @@ public class DesImpl implements Des {
     }
 
     private String[] generateKeys(long key) {
-        StringBuilder binaryString = new StringBuilder(Long.toBinaryString(key));
-        while (binaryString.length() < 64) {
-            binaryString.insert(0, "0");
-        }
+        String binaryString = appendZeroes(BLOCK_SIZE_BITS, Long.toBinaryString(key));
 
         int[] permutationTable = {57, 49, 41, 33, 25, 17, 9,
                 1, 58, 50, 42, 34, 26, 18,
@@ -191,20 +165,11 @@ public class DesImpl implements Des {
         for (int i = 1; i < keys.length; i++) {
             Key previous = keys[i - 1];
 
-            StringBuilder cString = new StringBuilder().append(leftShift(previous.getC(), keyRotationTable[i - 1]));
-            while (cString.length() < 28) {
-                cString.insert(0, "0");
-            }
+            String cString = appendZeroes(28, leftShift(previous.getC(), keyRotationTable[i - 1]));
 
-            StringBuilder dString = new StringBuilder().append(leftShift(previous.getD(), keyRotationTable[i - 1]));
-            while (dString.length() < 28) {
-                dString.insert(0, "0");
-            }
+            String dString = appendZeroes(28, leftShift(previous.getD(), keyRotationTable[i - 1]));
 
-            StringBuilder cd = new StringBuilder().append(cString).append(dString);
-            while (cd.length() < 56) {
-                cd.insert(0, "0");
-            }
+            String cd = appendZeroes(56, cString + dString);
 
             StringBuilder permutatedKey = new StringBuilder();
 
@@ -212,7 +177,7 @@ public class DesImpl implements Des {
                 permutatedKey.append(cd.charAt(value - 1));
             }
 
-            keys[i] = new Key(cString.toString(), dString.toString(), permutatedKey.toString());
+            keys[i] = new Key(cString, dString, permutatedKey.toString());
         }
 
         String[] resultKeys = new String[16];
@@ -254,24 +219,17 @@ public class DesImpl implements Des {
         }
 
         long[] l = new long[17];
-        l[0] = Long.parseLong(permutatedBlock.substring(0, 32), 2);
+        l[0] = Long.parseLong(permutatedBlock.substring(0, HALF_BLOCK_SIZE_BITS), 2);
         long[] r = new long[17];
-        r[0] = Long.parseLong(permutatedBlock.substring(32, permutatedBlock.length()), 2);
+        r[0] = Long.parseLong(permutatedBlock.substring(HALF_BLOCK_SIZE_BITS, permutatedBlock.length()), 2);
 
         for (int i = 1; i < 17; i++) {
             l[i] = r[i - 1];
             r[i] = l[i - 1] ^ f(r[i - 1], Long.parseLong(keys[i - 1], 2));
         }
 
-        StringBuilder bitR = new StringBuilder().append(Long.toBinaryString(r[16]));
-        while (bitR.length() < 32) {
-            bitR.insert(0, "0");
-        }
-
-        StringBuilder bitL = new StringBuilder().append(Long.toBinaryString(l[16]));
-        while (bitL.length() < 32) {
-            bitL.insert(0, "0");
-        }
+        String bitR = appendZeroes(HALF_BLOCK_SIZE_BITS, Long.toBinaryString(r[16]));
+        String bitL = appendZeroes(HALF_BLOCK_SIZE_BITS, Long.toBinaryString(l[16]));
 
         int[] finalPermutation = {
                 40, 8, 48, 16, 56, 24, 64, 32,
@@ -284,7 +242,7 @@ public class DesImpl implements Des {
                 33, 1, 41, 9, 49, 17, 57, 25
         };
 
-        String combined = bitR.append(bitL).toString();
+        String combined = bitR + bitL;
 
         StringBuilder finalPermutated = new StringBuilder();
         for (int value : finalPermutation) {
@@ -353,13 +311,10 @@ public class DesImpl implements Des {
         };
 
         StringBuilder bitString = new StringBuilder();
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < Byte.SIZE; i++) {
             int row = getRow(bitStrings[i]);
             int column = getColumn(bitStrings[i]);
-            StringBuilder stepString = new StringBuilder().append(Long.toBinaryString(s[i][row][column]));
-            while (stepString.length() < 4) {
-                stepString.insert(0, "0");
-            }
+            String stepString = appendZeroes(4, Long.toBinaryString(s[i][row][column]));
 
             bitString.append(stepString);
         }
@@ -394,13 +349,10 @@ public class DesImpl implements Des {
     }
 
     private String[] splitIntoSixBitGroups(long value) {
-        StringBuilder bitString = new StringBuilder(Long.toBinaryString(value));
-        while (bitString.length() < 48) {
-            bitString.insert(0, "0");
-        }
+        String bitString = appendZeroes(48, Long.toBinaryString(value));
 
-        String[] strings = new String[8];
-        for (int i = 0; i < 8; i++) {
+        String[] strings = new String[Byte.SIZE];
+        for (int i = 0; i < Byte.SIZE; i++) {
             int startIndex = i * 6;
             strings[i] = bitString.substring(startIndex, startIndex + 6);
         }
@@ -409,10 +361,7 @@ public class DesImpl implements Des {
     }
 
     private long expandBlock(long block) {
-        StringBuilder bitString = new StringBuilder(Long.toBinaryString(block));
-        while (bitString.length() < 32) {
-            bitString.insert(0, "0");
-        }
+        String bitString = appendZeroes(HALF_BLOCK_SIZE_BITS, Long.toBinaryString(block));
 
         int[] expansion = new int[]{32, 1, 2, 3, 4, 5,
                 4, 5, 6, 7, 8, 9,
@@ -442,5 +391,13 @@ public class DesImpl implements Des {
 
     private String byteToBitString(byte byteValue) {
         return Integer.toBinaryString((byteValue & 0xFF) + 0x100).substring(1);
+    }
+
+    private String appendZeroes(int desiredSize, String originalString) {
+        StringBuilder stringBuilder = new StringBuilder(originalString);
+        while (stringBuilder.length() < desiredSize) {
+            stringBuilder.insert(0, "0");
+        }
+        return stringBuilder.toString();
     }
 }

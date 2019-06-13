@@ -28,7 +28,7 @@ public class Md5Impl extends AbstractHashAlgorithm implements Md5 {
     private static final int INITIAL_C = 0x98badcfe;
     private static final int INITIAL_D = 0x10325476;
 
-    private final int[] T = initT();
+    private final int[] t = initT();
 
     @Override
     public String encrypt(String message) {
@@ -114,7 +114,7 @@ public class Md5Impl extends AbstractHashAlgorithm implements Md5 {
             bufferIndex = (operationIndex * 7) % OPERATION_AMOUNT;
         }
 
-        int operationStep = b + Integer.rotateLeft(a + functionValue + messageBuffer.get(bufferIndex) + T[operationIndex], getShift(round, operationIndex));
+        int operationStep = b + Integer.rotateLeft(a + functionValue + messageBuffer.get(bufferIndex) + t[operationIndex], getShift(round, operationIndex));
 
         return new Words(d, operationStep, b, c);
     }
@@ -124,12 +124,12 @@ public class Md5Impl extends AbstractHashAlgorithm implements Md5 {
     }
 
     private int[] initT() {
-        int[] t = new int[ROUND_AMOUNT * OPERATION_AMOUNT];
-        for (int i = 0; i < t.length; i++) {
-            t[i] = (int) (long) Math.floor(Math.pow(2, 32) * Math.abs(Math.sin(i + 1)));
+        int[] initiatedT = new int[ROUND_AMOUNT * OPERATION_AMOUNT];
+        for (int i = 0; i < initiatedT.length; i++) {
+            initiatedT[i] = (int) (long) Math.floor(Math.pow(2, 32) * Math.abs(Math.sin(i + 1.0)));
         }
 
-        return t;
+        return initiatedT;
     }
 
     private String toHexString(byte[] b) {
