@@ -25,13 +25,13 @@ class DESTest {
     @Test
     public void encrypt3() throws Exception {
         // Given
-        String message = "something long";
+        String message = "something pretty long";
         String key = "my key";
         String keyHash = new Md5Impl().encrypt(key);
         keyHash = keyHash.substring(0, 16);
 
         byte[] customEncrypted = new DesImpl().encrypt(message.getBytes(), new BigInteger(keyHash, 16).toByteArray());
-        assertArrayEquals(Hex.decodeHex("c4bf1775f316632819cd53c2949225e67916c09ab6c876a8"), customEncrypted);
+        assertArrayEquals(Hex.decodeHex("bc6d8d3661959e28e8f8d1e8c71e232833fb5df604ce4134"), customEncrypted);
     }
 
     @Test
