@@ -2,8 +2,8 @@ package com.seregy77.dss.web.controller;
 
 import com.seregy77.dss.service.converter.HexToBytesConverter;
 import com.seregy77.dss.service.converter.Utf8ToBytesConverter;
-import com.seregy77.dss.service.encryption.des.HashingTripleDes;
-import com.seregy77.dss.service.encryption.des.TripleDes;
+import com.seregy77.dss.service.encryption.des.triple.HashingTripleDes;
+import com.seregy77.dss.service.encryption.des.triple.TripleDes;
 import com.seregy77.dss.web.domain.DecryptionRequest;
 import com.seregy77.dss.web.domain.DecryptionResponse;
 import com.seregy77.dss.web.domain.EncryptionRequest;

@@ -1,4 +1,4 @@
-package com.seregy77.dss.service.encryption.des;
+package com.seregy77.dss.service.encryption.des.triple;
 
 import com.seregy77.dss.service.encryption.SymmetricAlgorithm;
 
